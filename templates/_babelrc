@@ -1,0 +1,3 @@
+{
+    "presets": ["./node_modules/@helio/wc-tasks/plugins/babel/rollup.js"]
+}

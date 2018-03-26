@@ -1,0 +1,35 @@
+{
+  "name": "@helio/component",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lib/component.js",
+  "module": "lib/component.js",
+  "exports": {
+    "component": "node_modules/@helio/component/lib/component.js"
+  },
+  "rollup": {
+    "externals": [
+      "@helio/wc-utils",
+      "@helio/wc-core",
+      "@helio/wc-data",
+      "@helio/wc-i18n",
+      "@helio/wc-ui"
+    ],
+    "entry": "src/core/package.js",
+    "format": "es",
+    "imports": {}
+  },
+  "scripts": {
+    "install": "node install"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@helio/wc-i18n": "~1.0.0",
+    "@helio/wc-core": "~1.0.0",
+    "@helio/wc-data": "~1.0.0"
+  },
+  "devDependencies": {
+    "@helio/wc-tasks": "^1.0.0"
+  }
+}

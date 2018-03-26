@@ -1,0 +1,112 @@
+#!/usr/bin/env node
+
+const argv           = require('yargs').argv,
+      fs             = require('fs'),
+      path           = require('path'),
+      wcParentPath = path.join(__dirname, '/..'),
+      CWD            = process.cwd();
+let gulpFile         = fs.readFileSync(`${wcParentPath}/templates/_gulpfile.js`, 'utf8');
+let packageFile      = require(`${wcParentPath}/templates/_package.json`);
+let wcPackageFile  = require(`${wcParentPath}/package.json`);
+let dirname          = path.basename(process.cwd());
+
+let hasPackageJson    = fs.existsSync(`${CWD}/package.json`);
+let hasGulpFile       = fs.existsSync(`${CWD}/gulpfile.js`);
+let hasInstallScript  = fs.existsSync(`${CWD}/install`);
+let hasGitignore      = fs.existsSync(`${CWD}/.gitignore`);
+let babelFile         = fs.existsSync(`${CWD}/.babelrc`);
+let exportFormat      = 'es';
+
+const projectNameMessage = `
+  What is the name of your project? default: [${dirname}]
+`;
+
+const projectTypeMessage = `
+  What kind of project are you making?
+    1) Module to be imported by other apps ('es' syntax output). - [default]
+    2) Bundled application (your app will be enclosed in an 'iife')
+  *Hint: this can always be changed in your package.json:rollup:format
+`;
+
+const readline = require('readline');
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+const createPackageName = (input) => {
+  return input && input.toLowerCase()
+      .replace(/_|\./gmi, '-');
+};
+
+const doQuestions = () => {
+  rl.question(projectTypeMessage, (format) => {
+    if (format == "2") {
+      exportFormat = 'iife';
+    }
+    console.log(`${exportFormat} chosen`);
+    rl.question(projectNameMessage, (packageName) => {
+      packageFile.name = `@helio/${createPackageName(packageName || dirname)}`;
+      console.log(`package name: ${dirname}`);
+      rl.close();
+      createProject();
+    });
+  });
+};
+
+
+const createProject = () => {
+  packageFile.main   = `lib/${dirname}.js`;
+  packageFile.module = `lib/${dirname}.js`;
+
+  if (hasPackageJson) {
+    console.log('merging package.json...');
+    let existingPackageJson = require(`${CWD}/package.json`);
+    fs.renameSync(`${CWD}/package.json`, `${CWD}/package.old.json`);
+    packageFile = Object.assign(packageFile, existingPackageJson);
+  }
+
+  packageFile.exports                   = {};
+  packageFile.exports[dirname]          = `node_modules/${packageFile.name}/${packageFile.module}`;
+  packageFile.rollup.entry              = `src/core/${dirname}.js`;
+  packageFile.rollup.format             = exportFormat;
+
+  if (hasGulpFile) {
+    console.log('Saving old gulpfile... any custom tasks will need to be moved into the new gulpfile.');
+    let theirGulp = fs.readFileSync(`${CWD}/gulpfile.js`, 'utf8');
+    fs.writeFileSync('./gulpfile.old.js', theirGulp);
+  }
+  if (!hasInstallScript){
+    fs.writeFileSync(`${CWD}/install`, fs.readFileSync(`${wcParentPath}/templates/install`, 'utf8'));
+  }
+  if (!hasGitignore){
+    fs.writeFileSync(`${CWD}/.gitignore`, fs.readFileSync(`${wcParentPath}/templates/_gitignore`, 'utf8'));
+  }
+  if (!babelFile){
+    fs.writeFileSync(`${CWD}/.babelrc`, fs.readFileSync(`${wcParentPath}/templates/_babelrc`, 'utf8'));
+  }
+  fs.writeFileSync(`${CWD}/package.json`, JSON.stringify(packageFile, null, 4));
+  gulpFile = gulpFile.replace(/@helio\/wc/gi, wcPackageFile.name);
+  fs.writeFileSync(`${CWD}/gulpfile.js`, gulpFile);
+
+  if (!fs.existsSync(`${CWD}/src/components`)) {
+    require('./create')(() => {
+      return require('./help')(`${dirname} Project Successfully created!`);
+    });
+  }
+};
+
+
+if (argv.v) {
+  console.log(`wc binary version: ${wcPackageFile.version}`);
+  process.exit(0);
+} else if (!argv.length) {
+  doQuestions()
+} else {
+  packageFile.name = `@helio/${createPackageName(argv._[0])}`;
+  createProject();
+}
+
+
+
